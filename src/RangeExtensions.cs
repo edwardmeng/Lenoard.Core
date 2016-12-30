@@ -290,7 +290,7 @@ namespace Lenoard.Core
 #if NetCore
             bool isNullable = Nullable.GetUnderlyingType(typeof(TSource)) != null || !typeof(TSource).GetTypeInfo().IsValueType;
 #else
-            bool isNullable = Nullable.GetUnderlyingType(typeof(TMember)) != null || !typeof(TMember).IsValueType;
+            bool isNullable = Nullable.GetUnderlyingType(typeof(TSource)) != null || !typeof(TSource).IsValueType;
 #endif
             Func<TSource, bool> lowerExpr = null, upperExpr = null;
             if (!isNullable || !Equals(range.LowerBound, default(TSource)))

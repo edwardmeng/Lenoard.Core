@@ -22,6 +22,14 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Core", "Core", "{17C06A99-6
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "UnitTests", "UnitTests", "{366F8150-14EF-46CF-A54A-86C610F29308}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "nuget", "nuget", "{7EFA3194-BA2E-4D25-9136-E0EF2670C8BD}"
+	ProjectSection(SolutionItems) = preProject
+		nuget\build.cmd = nuget\build.cmd
+		nuget\Lenoard.Core.nuspec = nuget\Lenoard.Core.nuspec
+		nuget\nuget.config = nuget\nuget.config
+		nuget\nuget.exe = nuget\nuget.exe
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
