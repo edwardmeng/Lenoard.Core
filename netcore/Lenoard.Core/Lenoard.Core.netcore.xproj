@@ -29,6 +29,23 @@
     <Compile Include="..\..\src\Properties\AssemblyInfo.cs" >
       <Link>Properties\AssemblyInfo.cs</Link>
     </Compile>
+    <Compile Include="..\..\src\Pair.cs" >
+      <Link>Pair.cs</Link>
+    </Compile>
+    <Compile Include="..\..\src\Range.cs" >
+      <Link>Range.cs</Link>
+    </Compile>
+    <Compile Include="..\..\src\Strings.Designer.cs">
+      <AutoGen>True</AutoGen>
+      <DesignTime>True</DesignTime>
+      <DependentUpon>Strings.resx</DependentUpon>
+      <Link>Strings.Designer.cs</Link>
+    </Compile>
+    <EmbeddedResource Include="..\..\src\Strings.resx">
+      <Link>Strings.resx</Link>
+      <Generator>ResXFileCodeGenerator</Generator>
+      <LastGenOutput>Strings.Designer.cs</LastGenOutput>
+    </EmbeddedResource>
   </ItemGroup>
 
   <PropertyGroup>

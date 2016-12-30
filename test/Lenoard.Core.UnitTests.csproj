@@ -56,6 +56,7 @@
     <Compile Include="Assert.cs" />
     <Compile Include="DataUriTest.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="RangeTest.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="..\Lenoard.snk">

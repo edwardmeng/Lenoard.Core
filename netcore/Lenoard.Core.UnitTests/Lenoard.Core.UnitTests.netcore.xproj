@@ -23,6 +23,9 @@
     <Compile Include="..\..\test\DataUriTest.cs" >
       <Link>DataUriTest.cs</Link>
     </Compile>
+    <Compile Include="..\..\test\RangeTest.cs">
+      <Link>RangeTest.cs</Link>
+    </Compile>
     <Compile Include="..\..\test\Properties\AssemblyInfo.cs" >
       <Link>Properties\AssemblyInfo.cs</Link>
     </Compile>
