@@ -14,7 +14,9 @@ namespace Lenoard.Core
     /// <seealso cref="https://en.wikipedia.org/wiki/Data_URI_scheme"/>
     /// <seealso cref="https://developer.mozilla.org/en-US/docs/Web/HTTP/data_URIs"/>
     /// <seealso cref="http://tools.ietf.org/html/rfc2397"/>
+#if !NetCore
     [Serializable]
+#endif
     public abstract class DataUri
     {
         #region Nested Types
@@ -22,7 +24,7 @@ namespace Lenoard.Core
         private class ParseResult
         {
             internal string MediaType;
-            internal readonly NameValueCollection Parameters = new NameValueCollection(StringComparer.InvariantCultureIgnoreCase);
+            internal readonly NameValueCollection Parameters = new NameValueCollection(StringComparer.CurrentCultureIgnoreCase);
             internal string Encoding;
             internal string Data;
             private readonly bool _canThrow;
@@ -121,7 +123,7 @@ namespace Lenoard.Core
         protected DataUri(string mediaType, NameValueCollection parameters)
         {
             _mediaType = string.IsNullOrEmpty(mediaType) ? DefaultMediaType : mediaType;
-            _parameters = parameters == null ? new ReadOnlyNameValueCollection(StringComparer.InvariantCultureIgnoreCase) : new ReadOnlyNameValueCollection(parameters);
+            _parameters = parameters == null ? new ReadOnlyNameValueCollection(StringComparer.CurrentCultureIgnoreCase) : new ReadOnlyNameValueCollection(parameters);
             _parameters.SetReadOnly();
         }
 
@@ -159,7 +161,7 @@ namespace Lenoard.Core
         public override string ToString()
         {
             var result = new StringBuilder("data:");
-            if (!string.Equals(_mediaType, DefaultMediaType, StringComparison.InvariantCultureIgnoreCase))
+            if (!string.Equals(_mediaType, DefaultMediaType, StringComparison.CurrentCultureIgnoreCase))
             {
                 result.Append(_mediaType).Append(";");
             }
@@ -172,7 +174,7 @@ namespace Lenoard.Core
 
         protected virtual bool Equals(DataUri other)
         {
-            if (!string.Equals(other.MediaType, MediaType, StringComparison.InvariantCultureIgnoreCase) || Parameters.Count != other.Parameters.Count)
+            if (!string.Equals(other.MediaType, MediaType, StringComparison.CurrentCultureIgnoreCase) || Parameters.Count != other.Parameters.Count)
             {
                 return false;
             }
@@ -199,7 +201,7 @@ namespace Lenoard.Core
         {
             unchecked
             {
-                var hashCode = _mediaType != null ? StringComparer.InvariantCultureIgnoreCase.GetHashCode(_mediaType) : 0;
+                var hashCode = _mediaType != null ? StringComparer.CurrentCultureIgnoreCase.GetHashCode(_mediaType) : 0;
                 foreach (string parameterName in Parameters)
                 {
                     hashCode = (hashCode * 397) ^ (parameterName != null ? parameterName.GetHashCode() : 0);
@@ -250,7 +252,7 @@ namespace Lenoard.Core
                 uri = new TextDataUri(result.MediaType, result.Parameters, result.Data);
                 return true;
             }
-            if (string.Equals(result.Encoding, "base64", StringComparison.InvariantCultureIgnoreCase))
+            if (string.Equals(result.Encoding, "base64", StringComparison.CurrentCultureIgnoreCase))
             {
                 try
                 {
