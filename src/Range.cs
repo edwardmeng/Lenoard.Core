@@ -1,5 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq.Expressions;
+using System.Reflection;
+using System.Linq;
 
 namespace Lenoard.Core
 {
@@ -21,7 +24,16 @@ namespace Lenoard.Core
 #endif
     public class Range<T> : IEquatable<Range<T>>
     {
+        private static readonly Func<string, T> _parser;
+        private static readonly BoundaryParser<T> _tryParser;
+
         #region Constructors
+
+        static Range()
+        {
+            _parser = CreateParser();
+            _tryParser = CreateTryParser();
+        }
 
         /// <summary>
         /// Initializes a new Range
@@ -100,6 +112,166 @@ namespace Lenoard.Core
 
         #region Parse
 
+        private static bool IsNullable(out Type underlyingType)
+        {
+#if NetCore
+            var type = typeof(T).GetTypeInfo();
+            bool isNullable = type.IsGenericType && !type.IsGenericTypeDefinition && type.GetGenericTypeDefinition() == typeof(Nullable<>);
+            underlyingType = isNullable ? type.GenericTypeArguments[0] : typeof(T);
+#else
+            var type = typeof(T);
+            bool isNullable = type.IsGenericType && !type.IsGenericTypeDefinition && type.GetGenericTypeDefinition() == typeof(Nullable<>);
+            underlyingType = isNullable ? type.GetGenericArguments()[0] : type;
+#endif
+            return isNullable;
+        }
+
+        private static MethodInfo FindParseMethod(Type type)
+        {
+#if NetCore
+            return type.GetTypeInfo().GetDeclaredMethods("Parse")
+                .SingleOrDefault(method =>
+                    {
+                        if (!method.IsPublic || !method.IsStatic) return false;
+                        var parameters = method.GetParameters();
+                        return parameters.Length == 1 && parameters[0].ParameterType == typeof(string);
+                    });
+#else
+            return type.GetMethod("Parse", BindingFlags.Public | BindingFlags.Static, null, new[] { typeof(string) }, null);
+#endif
+        }
+
+        private static MethodInfo FindTryParseMethod(Type type)
+        {
+#if NetCore
+            return type.GetTypeInfo().GetDeclaredMethods("TryParse")
+                .SingleOrDefault(method =>
+                {
+                    if (!method.IsPublic || !method.IsStatic) return false;
+                    var parameters = method.GetParameters();
+                    return parameters.Length == 2 && parameters[0].ParameterType == typeof(string) && parameters[1].ParameterType == type.MakeByRefType();
+                });
+#else
+            return type.GetMethod("TryParse", BindingFlags.Public | BindingFlags.Static, null, new[] { typeof(string), type.MakeByRefType() }, null);
+#endif
+        }
+
+        private static Func<string, T> CreateParser()
+        {
+            if (typeof(T) == typeof(string))
+            {
+                return input => (T)(object)input;
+            }
+            Type underlyingType;
+            var nullable = IsNullable(out underlyingType);
+            var parseMethod = FindParseMethod(underlyingType);
+            if (parseMethod != null && parseMethod.ReturnType == underlyingType)
+            {
+                var parameter = Expression.Parameter(typeof(string));
+                var parsedValue = Expression.Call(parseMethod, parameter);
+                Func<Func<string, T>> defaultCreator = () => Expression.Lambda<Func<string, T>>(parsedValue, parameter).Compile();
+                if (nullable ||
+#if NetCore
+                    !typeof(T).GetTypeInfo().IsValueType
+#else
+                    !typeof(T).IsValueType
+#endif
+                    )
+                {
+                    Func<string, T> lambda;
+                    if (nullable)
+                    {
+                        var constructor = typeof(T).GetConstructor(new[] { underlyingType });
+                        lambda = Expression.Lambda<Func<string, T>>(Expression.New(constructor, parsedValue), parameter).Compile();
+                    }
+                    else
+                    {
+                        lambda = defaultCreator();
+                    }
+                    return input => string.IsNullOrWhiteSpace(input) ? default(T) : lambda(input.Trim());
+                }
+                return defaultCreator();
+            }
+            return null;
+        }
+
+        private static BoundaryParser<T> CreateTryParser()
+        {
+            if (typeof(T) == typeof(string))
+            {
+                return (string input, out T result) =>
+                {
+                    result = (T) (object) input;
+                    return true;
+                };
+            }
+            Type underlyingType;
+            var nullable = IsNullable(out underlyingType);
+            var tryParseMethod = FindTryParseMethod(underlyingType);
+            if (tryParseMethod != null && tryParseMethod.ReturnType == typeof(bool))
+            {
+                var parameterInput = Expression.Parameter(typeof(string));
+                var parameterResult = Expression.Parameter(typeof(T).MakeByRefType());
+                Func<BoundaryParser<T>> defaultCreator =
+                    () => Expression.Lambda<BoundaryParser<T>>(Expression.Call(tryParseMethod, parameterInput, parameterResult), parameterInput, parameterResult).Compile();
+
+                if (nullable ||
+#if NetCore
+                    !typeof(T).GetTypeInfo().IsValueType
+#else
+                    !typeof(T).IsValueType
+#endif
+                )
+                {
+                    BoundaryParser<T> lambda;
+                    if (nullable)
+                    {
+                        var parsedValue = Expression.Variable(underlyingType);
+                        var result = Expression.Variable(typeof(bool));
+                        var assign = Expression.Assign(result, Expression.Call(tryParseMethod, parameterInput, parsedValue));
+                        var constructor = typeof(T).GetConstructor(new[] { underlyingType });
+                        var assignValue = Expression.Assign(parameterResult, Expression.New(constructor, parsedValue));
+                        lambda = Expression.Lambda<BoundaryParser<T>>(
+                            Expression.Block(new[] { parsedValue, result }, assign, assignValue, result),
+                            parameterInput, parameterResult).Compile();
+                    }
+                    else
+                    {
+                        lambda = defaultCreator();
+                    }
+                    return (string input, out T result) =>
+                    {
+                        if (string.IsNullOrWhiteSpace(input))
+                        {
+                            result = default(T);
+                            return true;
+                        }
+                        return lambda(input, out result);
+                    };
+                }
+                return defaultCreator();
+            }
+            return null;
+        }
+
+        /// <summary>
+        /// Converts the string representation of a range to the equivalent range. 
+        /// </summary>
+        /// <param name="input">The range string to parse.</param>
+        /// <param name="result">
+        /// The range that will contain the parsed value. 
+        /// If the method returns <c>true</c>, result contains a valid range. 
+        /// If the method returns <c>false</c>, result will be <see langword="null"/>. </param>
+        /// <returns><c>true</c> if the parse operation was successful; otherwise, <c>false</c>.</returns>
+        public static bool TryParse(string input, out Range<T> result)
+        {
+            if (_tryParser == null)
+            {
+                throw new InvalidOperationException(string.Format(Strings.CannotFindTryParse, Nullable.GetUnderlyingType(typeof(T)) ?? typeof(T)));
+            }
+            return TryParse(input, _tryParser, out result);
+        }
+
         /// <summary>
         /// Converts the string representation of a range to the equivalent range. 
         /// </summary>
@@ -151,6 +323,20 @@ namespace Lenoard.Core
                 throw new FormatException(Strings.UnrecognizedRange, ex);
             }
             return new Range<T>(lowerBound, upperBound, includeLowerBound, includeUpperBound);
+        }
+
+        /// <summary>
+        /// Converts the string representation of a range to the equivalent range.
+        /// </summary>
+        /// <param name="input">The range string to parse.</param>
+        /// <returns>A range that contains the value that was parsed.</returns>
+        public static Range<T> Parse(string input)
+        {
+            if (_parser == null)
+            {
+                throw new InvalidOperationException(string.Format(Strings.CannotFindParseMethod, Nullable.GetUnderlyingType(typeof(T)) ?? typeof(T)));
+            }
+            return Parse(input, _parser);
         }
 
         private static void ParseRange(string input, out bool includeLowerBound, out bool includeUpperBound, out string lowerBound, out string upperBound)

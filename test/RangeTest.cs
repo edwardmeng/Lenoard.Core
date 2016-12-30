@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Globalization;
+using System.Linq;
 
 namespace Lenoard.Core.UnitTests
 {
@@ -87,6 +88,52 @@ namespace Lenoard.Core.UnitTests
         {
             Assert.Equal(new Range<int>(3, 3), Range<int>.Parse("3", int.Parse));
             Assert.Equal(new Range<int>(-3, -3), Range<int>.Parse("-3", int.Parse));
+        }
+
+#if NetCore
+        [Xunit.Fact]
+#else
+        [NUnit.Framework.Test]
+#endif
+        public void ParseInt32()
+        {
+            Assert.Equal(new Range<int>(0, 3), Range<int>.Parse("[0,3]"));
+            Assert.Equal(new Range<int>(0, 3), Range<int>.Parse("0~3"));
+            Assert.Equal(new Range<int?>(null, 3), Range<int?>.Parse("[,3]"));
+            Assert.Equal(new Range<int?>(0, null), Range<int?>.Parse("[0,]"));
+        }
+
+#if NetCore
+        [Xunit.Fact]
+#else
+        [NUnit.Framework.Test]
+#endif
+        public void TryParseInt32()
+        {
+            Range<int> result;
+            Range<int?> nullableResult;
+            Assert.True(Range<int>.TryParse("[0,3]", out result));
+            Assert.True(Range<int>.TryParse("0~3", out result));
+            Assert.True(Range<int?>.TryParse("[,3]", out nullableResult));
+            Assert.True(Range<int?>.TryParse("[0,]", out nullableResult));
+        }
+
+#if NetCore
+        [Xunit.Fact]
+#else
+        [NUnit.Framework.Test]
+#endif
+        public void QueryableFilter()
+        {
+            var array = new[]
+            {
+                new Version("1.2.0"),
+                new Version("2.5.0"),
+                new Version("0.4.0"),
+                new Version("0.8.5"),
+            };
+            var filteredArray = array.AsQueryable().Range(x => x.Minor, new Range<int?>(5, null)).ToArray();
+            Assert.Equal(2,filteredArray.Length);
         }
 
         private static bool TryParseNullable(string text, out int? value)

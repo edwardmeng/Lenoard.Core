@@ -11,8 +11,8 @@
 namespace Lenoard.Core {
     using System;
     using System.Reflection;
-
-
+    
+    
     /// <summary>
     ///   一个强类型的资源类，用于查找本地化的字符串等。
     /// </summary>
@@ -72,6 +72,24 @@ namespace Lenoard.Core {
         internal static string BadComparandType {
             get {
                 return ResourceManager.GetString("BadComparandType", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Cannot find the Parse method in the type &quot;{0}&quot; to convert string value to {0}. Please use the Parse(string input, Func&lt;string, T&gt; boundaryParser) method instead. 的本地化字符串。
+        /// </summary>
+        internal static string CannotFindParseMethod {
+            get {
+                return ResourceManager.GetString("CannotFindParseMethod", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 Cannot find the TryParse method in the type &quot;{0}&quot; to try to convert string value to {0}. Please use the TryParse(string input, BoundaryParser&lt;T&gt; boundaryParser, out Range&lt;T&gt; result) method instead. 的本地化字符串。
+        /// </summary>
+        internal static string CannotFindTryParse {
+            get {
+                return ResourceManager.GetString("CannotFindTryParse", resourceCulture);
             }
         }
         

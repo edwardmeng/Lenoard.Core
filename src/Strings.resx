@@ -120,6 +120,12 @@
   <data name="BadComparandType" xml:space="preserve">
     <value>Comparand is not of the correct type.</value>
   </data>
+  <data name="CannotFindParseMethod" xml:space="preserve">
+    <value>Cannot find the Parse method in the type "{0}" to convert string value to {0}. Please use the Parse(string input, Func&lt;string, T&gt; boundaryParser) method instead.</value>
+  </data>
+  <data name="CannotFindTryParse" xml:space="preserve">
+    <value>Cannot find the TryParse method in the type "{0}" to try to convert string value to {0}. Please use the TryParse(string input, BoundaryParser&lt;T&gt; boundaryParser, out Range&lt;T&gt; result) method instead.</value>
+  </data>
   <data name="CannotNullOrEmpty" xml:space="preserve">
     <value>The value cannot be null or empty.</value>
   </data>
