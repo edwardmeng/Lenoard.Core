@@ -6,8 +6,20 @@ using System.Reflection;
 
 namespace Lenoard.Core
 {
+    /// <summary>
+    /// Provides a set of <see langword="static"/> extension methods for the <see cref="IQueryable{TSource}"/> by using the <see cref="T:Range{T}"/> as parameter.
+    /// </summary>
     public static class RangeExtensions
     {
+        /// <summary>
+        /// Filters a sequence of values based on a <see cref="T:Range{T}"/>.
+        /// </summary>
+        /// <typeparam name="TSource">The type of the elements of <paramref name="source"/>.</typeparam>
+        /// <typeparam name="TMember">The type of the filtering element member.</typeparam>
+        /// <param name="source">An <see cref="IQueryable{T}"/> to filter.</param>
+        /// <param name="member">The lambda expression to indicate the element member to filter.</param>
+        /// <param name="range">The <see cref="T:Range{T}"/> used to filter the sequence.</param>
+        /// <returns>An <see cref="IQueryable{T}"/> that contains elements from the input sequence that element members satisfy the range limitation.</returns>
         public static IQueryable<TSource> Range<TSource, TMember>(this IQueryable<TSource> source, Expression<Func<TSource, TMember>> member, Range<TMember> range)
         {
             if (source == null)
@@ -63,6 +75,73 @@ namespace Lenoard.Core
             return source;
         }
 
+        /// <summary>
+        /// Filters a sequence of values based on a <see cref="T:Range{T}"/>.
+        /// </summary>
+        /// <typeparam name="TSource">The type of the elements of <paramref name="source"/>.</typeparam>
+        /// <param name="source">An <see cref="IQueryable{T}"/> to filter.</param>
+        /// <param name="range">The <see cref="T:Range{T}"/> used to filter the sequence.</param>
+        /// <returns>An <see cref="IQueryable{T}"/> that contains elements from the input sequence that satisfy the range limitation.</returns>
+        public static IQueryable<TSource> Range<TSource>(this IQueryable<TSource> source, Range<TSource> range)
+        {
+            if (source == null)
+            {
+                throw new ArgumentNullException(nameof(source));
+            }
+            if (range == null)
+            {
+                return source;
+            }
+#if NetCore
+            bool isNullable = Nullable.GetUnderlyingType(typeof(TSource)) != null || !typeof(TSource).GetTypeInfo().IsValueType;
+#else
+            bool isNullable = Nullable.GetUnderlyingType(typeof(TSource)) != null || !typeof(TSource).IsValueType;
+#endif
+            var parameter = Expression.Parameter(typeof(TSource));
+            Expression lowerExpr = null, upperExpr = null;
+            if (!isNullable || !Equals(range.LowerBound, default(TSource)))
+            {
+                var lowerBoundExpr = Expression.Constant(range.LowerBound, typeof(TSource));
+                lowerExpr = range.IncludeLowerBound ?
+                    Expression.GreaterThanOrEqual(parameter, lowerBoundExpr) :
+                    Expression.GreaterThan(parameter, lowerBoundExpr);
+            }
+            if (!isNullable || !Equals(range.UpperBound, default(TSource)))
+            {
+                var upperBoundExpr = Expression.Constant(range.UpperBound, typeof(TSource));
+                upperExpr = range.IncludeUpperBound
+                    ? Expression.LessThanOrEqual(parameter, upperBoundExpr)
+                    : Expression.LessThan(parameter, upperBoundExpr);
+            }
+            Expression filterExpr;
+            if (lowerExpr == null)
+            {
+                filterExpr = upperExpr;
+            }
+            else if (upperExpr == null)
+            {
+                filterExpr = lowerExpr;
+            }
+            else
+            {
+                filterExpr = Expression.AndAlso(lowerExpr, upperExpr);
+            }
+            if (filterExpr != null)
+            {
+                return source.Where(Expression.Lambda<Func<TSource, bool>>(filterExpr, parameter));
+            }
+            return source;
+        }
+
+        /// <summary>
+        /// Filters a sequence of values based on a <see cref="T:Range{T}"/>.
+        /// </summary>
+        /// <typeparam name="TSource">The type of the elements of <paramref name="source"/>.</typeparam>
+        /// <typeparam name="TMember">The type of the filtering element member.</typeparam>
+        /// <param name="source">An <see cref="IQueryable{T}"/> to filter.</param>
+        /// <param name="member">The lambda expression to indicate the element member to filter.</param>
+        /// <param name="range">The <see cref="T:Range{T}"/> used to filter the sequence.</param>
+        /// <returns>An <see cref="IQueryable{T}"/> that contains elements from the input sequence that element members satisfy the range limitation.</returns>
         public static IQueryable<TSource> Range<TSource, TMember>(this IQueryable<TSource> source, Expression<Func<TSource, TMember>> member, Range<TMember?> range)
             where TMember : struct
         {
@@ -114,6 +193,15 @@ namespace Lenoard.Core
             return source;
         }
 
+        /// <summary>
+        /// Filters a sequence of values based on a <see cref="T:Range{T}"/>.
+        /// </summary>
+        /// <typeparam name="TSource">The type of the elements of <paramref name="source"/>.</typeparam>
+        /// <typeparam name="TMember">The type of the filtering element member.</typeparam>
+        /// <param name="source">An <see cref="IQueryable{T}"/> to filter.</param>
+        /// <param name="member">The lambda expression to indicate the element member to filter.</param>
+        /// <param name="range">The <see cref="T:Range{T}"/> used to filter the sequence.</param>
+        /// <returns>An <see cref="IQueryable{T}"/> that contains elements from the input sequence that element members satisfy the range limitation.</returns>
         public static IQueryable<TSource> Range<TSource, TMember>(this IQueryable<TSource> source, Expression<Func<TSource, TMember?>> member, Range<TMember> range)
              where TMember : struct
         {
@@ -141,6 +229,15 @@ namespace Lenoard.Core
             return source.Where(Expression.Lambda<Func<TSource, bool>>(Expression.AndAlso(lowerExpr, upperExpr), member.Parameters));
         }
 
+        /// <summary>
+        /// Filters a sequence of values based on a <see cref="T:Range{T}"/>.
+        /// </summary>
+        /// <typeparam name="TSource">The type of the elements of <paramref name="source"/>.</typeparam>
+        /// <typeparam name="TMember">The type of the filtering element member.</typeparam>
+        /// <param name="source">An <see cref="IEnumerable{T}"/> to filter.</param>
+        /// <param name="member">The lambda expression to indicate the element member to filter.</param>
+        /// <param name="range">The <see cref="T:Range{T}"/> used to filter the sequence.</param>
+        /// <returns>An <see cref="IEnumerable{T}"/> that contains elements from the input sequence that element members satisfy the range limitation.</returns>
         public static IEnumerable<TSource> Range<TSource, TMember>(this IEnumerable<TSource> source, Func<TSource, TMember> member, Range<TMember> range)
         {
 #if NetCore
@@ -181,6 +278,62 @@ namespace Lenoard.Core
             return source;
         }
 
+        /// <summary>
+        /// Filters a sequence of values based on a <see cref="T:Range{T}"/>.
+        /// </summary>
+        /// <typeparam name="TSource">The type of the elements of <paramref name="source"/>.</typeparam>
+        /// <param name="source">An <see cref="IEnumerable{T}"/> to filter.</param>
+        /// <param name="range">The <see cref="T:Range{T}"/> used to filter the sequence.</param>
+        /// <returns>An <see cref="IEnumerable{T}"/> that contains elements from the input sequence that element members satisfy the range limitation.</returns>
+        public static IEnumerable<TSource> Range<TSource>(this IEnumerable<TSource> source, Range<TSource> range)
+        {
+#if NetCore
+            bool isNullable = Nullable.GetUnderlyingType(typeof(TSource)) != null || !typeof(TSource).GetTypeInfo().IsValueType;
+#else
+            bool isNullable = Nullable.GetUnderlyingType(typeof(TMember)) != null || !typeof(TMember).IsValueType;
+#endif
+            Func<TSource, bool> lowerExpr = null, upperExpr = null;
+            if (!isNullable || !Equals(range.LowerBound, default(TSource)))
+            {
+                lowerExpr = range.IncludeLowerBound
+                    ? new Func<TSource, bool>(value => Comparer<TSource>.Default.Compare(value, range.LowerBound) >= 0)
+                    : value => Comparer<TSource>.Default.Compare(value, range.LowerBound) > 0;
+            }
+            if (!isNullable || !Equals(range.UpperBound, default(TSource)))
+            {
+                upperExpr = range.IncludeUpperBound
+                    ? new Func<TSource, bool>(value => Comparer<TSource>.Default.Compare(value, range.UpperBound) <= 0) :
+                    value => Comparer<TSource>.Default.Compare(value, range.UpperBound) < 0;
+            }
+            Func<TSource, bool> filterExpr;
+            if (lowerExpr == null)
+            {
+                filterExpr = upperExpr;
+            }
+            else if (upperExpr == null)
+            {
+                filterExpr = lowerExpr;
+            }
+            else
+            {
+                filterExpr = value => lowerExpr(value) && upperExpr(value);
+            }
+            if (filterExpr != null)
+            {
+                return source.Where(item => filterExpr(item));
+            }
+            return source;
+        }
+
+        /// <summary>
+        /// Filters a sequence of values based on a <see cref="T:Range{T}"/>.
+        /// </summary>
+        /// <typeparam name="TSource">The type of the elements of <paramref name="source"/>.</typeparam>
+        /// <typeparam name="TMember">The type of the filtering element member.</typeparam>
+        /// <param name="source">An <see cref="IEnumerable{T}"/> to filter.</param>
+        /// <param name="member">The lambda expression to indicate the element member to filter.</param>
+        /// <param name="range">The <see cref="T:Range{T}"/> used to filter the sequence.</param>
+        /// <returns>An <see cref="IEnumerable{T}"/> that contains elements from the input sequence that element members satisfy the range limitation.</returns>
         public static IEnumerable<TSource> Range<TSource, TMember>(this IEnumerable<TSource> source, Func<TSource, TMember> member, Range<TMember?> range)
             where TMember : struct
         {
@@ -217,6 +370,15 @@ namespace Lenoard.Core
             return source;
         }
 
+        /// <summary>
+        /// Filters a sequence of values based on a <see cref="T:Range{T}"/>.
+        /// </summary>
+        /// <typeparam name="TSource">The type of the elements of <paramref name="source"/>.</typeparam>
+        /// <typeparam name="TMember">The type of the filtering element member.</typeparam>
+        /// <param name="source">An <see cref="IEnumerable{T}"/> to filter.</param>
+        /// <param name="member">The lambda expression to indicate the element member to filter.</param>
+        /// <param name="range">The <see cref="T:Range{T}"/> used to filter the sequence.</param>
+        /// <returns>An <see cref="IEnumerable{T}"/> that contains elements from the input sequence that element members satisfy the range limitation.</returns>
         public static IEnumerable<TSource> Range<TSource, TMember>(this IEnumerable<TSource> source, Func<TSource, TMember?> member, Range<TMember> range)
             where TMember : struct
         {

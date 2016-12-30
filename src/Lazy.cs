@@ -28,9 +28,9 @@ namespace Lenoard.Core
         private readonly LazyThreadSafetyMode _mode;
         private System.Lazy<T> _lazy;
 
-#endregion
+        #endregion
 
-#region Constructors
+        #region Constructors
 
         /// <summary>
         /// Initializes a new instance of the <see cref="Lazy{T}"/> class. 
@@ -127,9 +127,9 @@ namespace Lenoard.Core
             _lazy = CreateLazy();
         }
 
-#endregion
+        #endregion
 
-#region Properties
+        #region Properties
 
         /// <summary>
         /// Gets the lazily initialized value of the current <see cref="Lazy{T}"/> instance.
@@ -185,9 +185,9 @@ namespace Lenoard.Core
 
         internal LazyThreadSafetyMode Mode => _mode;
 
-#endregion
+        #endregion
 
-#region Methods
+        #region Methods
 
         private System.Lazy<T> CreateLazy()
         {
@@ -219,10 +219,10 @@ namespace Lenoard.Core
             return _lazy.ToString();
         }
 
-#endregion
+        #endregion
     }
 
-#region LazyDebugView
+    #region LazyDebugView
 
     internal class LazyDebugView<T>
     {
@@ -242,5 +242,5 @@ namespace Lenoard.Core
         public T Value => _lazy.ValueForDebugDisplay;
     }
 
-#endregion
+    #endregion
 }
