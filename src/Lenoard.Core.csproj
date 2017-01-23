@@ -46,7 +46,6 @@
       <Link>Properties\GlobalAssemblyInfo.cs</Link>
     </Compile>
     <Compile Include="DataUri.cs" />
-    <Compile Include="ITrackingObject.cs" />
     <Compile Include="Lazy.cs" />
     <Compile Include="Pair.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
