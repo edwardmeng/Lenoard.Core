@@ -23,9 +23,12 @@ namespace Lenoard.Core
     [Serializable]
 #endif
     public class Range<T> : IEquatable<Range<T>>
+        where T : IComparable<T>
     {
         private static readonly Func<string, T> _parser;
         private static readonly BoundaryParser<T> _tryParser;
+        public static readonly Range<T> Empty = new Range<T>(true);
+        private readonly bool _isEmpty;
 
         #region Constructors
 
@@ -33,6 +36,11 @@ namespace Lenoard.Core
         {
             _parser = CreateParser();
             _tryParser = CreateTryParser();
+        }
+
+        private Range(bool isEmpty)
+        {
+            _isEmpty = isEmpty;
         }
 
         /// <summary>
@@ -102,12 +110,36 @@ namespace Lenoard.Core
         /// <returns>Returns true if the value is contained within the range, otherwise false</returns>
         public bool Contains(T value)
         {
+            if (_isEmpty) return false;
             int left = Comparer.Compare(value, LowerBound);
             if (Comparer.Compare(value, LowerBound) < 0 || (left == 0 && !IncludeLowerBound))
                 return false;
 
             int right = Comparer.Compare(value, UpperBound);
             return right < 0 || (right == 0 && IncludeUpperBound);
+        }
+
+        /// <summary>
+        /// Calculate the intersection between two ranges.
+        /// </summary>
+        /// <param name="other">The Range to intersect this Range with</param>
+        /// <returns>The Range intersection</returns>
+        public Range<T> Intersect(Range<T> other)
+        {
+            if (!ReferenceEquals(LowerBound,null)&&!ReferenceEquals(other.UpperBound,null) && LowerBound.CompareTo(other.UpperBound)>0)
+            {
+                return Empty;
+            }
+            return Empty;
+            //var allIntersections = _comparatorSets.SelectMany(
+            //    thisCs => other._comparatorSets.Select(thisCs.Intersect))
+            //    .Where(cs => cs != null).ToList();
+
+            //if (allIntersections.Count == 0)
+            //{
+            //    return new Range("<0.0.0");
+            //}
+            //return new Range(allIntersections);
         }
 
         #region Parse
@@ -201,7 +233,7 @@ namespace Lenoard.Core
             {
                 return (string input, out T result) =>
                 {
-                    result = (T) (object) input;
+                    result = (T)(object)input;
                     return true;
                 };
             }
@@ -501,6 +533,8 @@ namespace Lenoard.Core
         {
             if (ReferenceEquals(null, other)) return false;
             if (ReferenceEquals(this, other)) return true;
+            if (_isEmpty && other._isEmpty) return true;
+            if (!_isEmpty || !other._isEmpty) return false;
             return other.IncludeLowerBound.Equals(IncludeLowerBound) &&
                 other.IncludeUpperBound.Equals(IncludeUpperBound) &&
                 Equals(other.LowerBound, LowerBound) &&
@@ -528,6 +562,10 @@ namespace Lenoard.Core
         {
             unchecked
             {
+                if (_isEmpty)
+                {
+                    return _isEmpty.GetHashCode();
+                }
                 var result = IncludeLowerBound.GetHashCode();
                 result = (result * 397) ^ IncludeUpperBound.GetHashCode();
                 result = (result * 397) ^ LowerBound.GetHashCode();

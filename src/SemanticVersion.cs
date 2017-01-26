@@ -7,8 +7,14 @@ using System.Text.RegularExpressions;
 namespace Lenoard.Core
 {
     /// <summary>Reprensents a version object, compliant with the Semantic Version standard 2.0 (http://semver.org)</summary>
-    public sealed class SemanticVersion : IEquatable<SemanticVersion>, IComparable<SemanticVersion>, IComparable
+#if NETSTANDARD
+    public sealed class SemanticVersion : IEquatable<SemanticVersion>, IComparable<SemVersion>, IComparable
+#else
+    [Serializable]
+    public sealed class SemanticVersion : IEquatable<SemanticVersion>, IComparable<SemanticVersion>, IComparable, System.Runtime.Serialization.ISerializable
+#endif
     {
+        #region SemanticVersionFormatter
         private class SemanticVersionFormatter : IFormatProvider, ICustomFormatter
         {
             public string Format(string format, object arg, IFormatProvider formatProvider)
@@ -59,7 +65,9 @@ namespace Lenoard.Core
                 return c.ToString();
             }
         }
+        #endregion
 
+        #region SemanticVersionComparer
         private class SemanticVersionComparer : IEqualityComparer<SemanticVersion>, IComparer<SemanticVersion>
         {
             bool IEqualityComparer<SemanticVersion>.Equals(SemanticVersion x, SemanticVersion y)
@@ -141,13 +149,27 @@ namespace Lenoard.Core
                 return StringComparer.OrdinalIgnoreCase.Compare(version1, version2);
             }
         }
+        #endregion
+
+        #region Fields
 
         private static readonly Regex VersionExpression =
-            new Regex(
-                @"^(?<major>[0-9]+)\.(?<minor>[0-9]+)\.(?<patch>[0-9]+)(\-(?<pre>[0-9A-Za-z\-\.]+))?(\+(?<build>[0-9A-Za-z\-\.]+))?$",
+            new Regex(@"^(?<major>\d+)" +
+                @"(\.(?<minor>\d+))?" +
+                @"(\.(?<patch>\d+))?" +
+                @"(\-(?<pre>[0-9A-Za-z\-\.]+))?" +
+                @"(\+(?<build>[0-9A-Za-z\-\.]+))?$",
+#if NetCore
                 RegexOptions.CultureInvariant | RegexOptions.ExplicitCapture);
+#else
+                RegexOptions.CultureInvariant | RegexOptions.Compiled | RegexOptions.ExplicitCapture);
+#endif
         private static readonly SemanticVersionComparer VersionComparer = new SemanticVersionComparer();
         private static readonly SemanticVersionFormatter VersionFormatter = new SemanticVersionFormatter();
+
+        #endregion
+
+        #region Constructors
 
         /// <summary>
         ///     Creates a SemanticVersion using SemanticVersion.Parse(string)
@@ -186,9 +208,13 @@ namespace Lenoard.Core
             Major = major;
             Minor = minor;
             Patch = patch;
-            Prerelease = prerelease;
-            Build = build;
+            Prerelease = prerelease ?? string.Empty;
+            Build = build ?? string.Empty;
         }
+
+        #endregion
+
+        #region Properties
 
         /// <summary>Gets the major version component.</summary>
         public int Major { get; }
@@ -205,10 +231,37 @@ namespace Lenoard.Core
         /// <summary>Gets the build version component.</summary>
         public string Build { get; }
 
-        /// <summary>Checks if a given string can be considered a valid <see cref="SemanticVersion" />.</summary>
-        /// <param name="inputString">The string to check for validity.</param>
-        /// <returns>True, if the passed string is a valid <see cref="SemanticVersion" />, otherwise false.</returns>
-        public static bool IsVersion(string inputString) => VersionExpression.IsMatch(inputString);
+        #endregion
+
+        #region Serialization
+
+#if !NetCore
+        /// <summary>
+        /// Initializes a new instance of the <see cref="SemanticVersion" /> class.
+        /// </summary>
+        /// <param name="info"></param>
+        /// <param name="context"></param>
+        /// <exception cref="ArgumentNullException"></exception>
+        private SemanticVersion(System.Runtime.Serialization.SerializationInfo info, System.Runtime.Serialization.StreamingContext context)
+        {
+            if (info == null) throw new ArgumentNullException(nameof(info));
+            var semVersion = Parse(info.GetString("SemanticVersion"));
+            Major = semVersion.Major;
+            Minor = semVersion.Minor;
+            Patch = semVersion.Patch;
+            Prerelease = semVersion.Prerelease;
+            Build = semVersion.Build;
+        }
+
+        [System.Security.Permissions.SecurityPermission(System.Security.Permissions.SecurityAction.Demand, SerializationFormatter = true)]
+        public void GetObjectData(System.Runtime.Serialization.SerializationInfo info, System.Runtime.Serialization.StreamingContext context)
+        {
+            if (info == null) throw new ArgumentNullException(nameof(info));
+            info.AddValue("SemanticVersion", ToString());
+        }
+#endif
+
+        #endregion
 
         #region Format
 
@@ -347,6 +400,11 @@ namespace Lenoard.Core
 
         #region Conversions
 
+        /// <summary>Checks if a given string can be considered a valid <see cref="SemanticVersion" />.</summary>
+        /// <param name="inputString">The string to check for validity.</param>
+        /// <returns>True, if the passed string is a valid <see cref="SemanticVersion" />, otherwise false.</returns>
+        public static bool IsVersion(string inputString) => VersionExpression.IsMatch(inputString);
+
         /// <summary>Implicitly converts a string into a <see cref="SemanticVersion" />.</summary>
         /// <param name="versionString">The string to convert.</param>
         /// <returns>The <see cref="SemanticVersion" /> object.</returns>
@@ -445,13 +503,12 @@ namespace Lenoard.Core
 
             if (!versionMatch.Success)
                 return false;
-
-            var major = int.Parse(versionMatch.Groups["major"].Value, CultureInfo.InvariantCulture);
-            var minor = int.Parse(versionMatch.Groups["minor"].Value, CultureInfo.InvariantCulture);
-            var patch = int.Parse(versionMatch.Groups["patch"].Value, CultureInfo.InvariantCulture);
-
-            version = new SemanticVersion(major, minor, patch,
-                versionMatch.Groups["pre"].Value, versionMatch.Groups["build"].Value);
+            version = new SemanticVersion(
+                int.Parse(versionMatch.Groups["major"].Value, CultureInfo.InvariantCulture),
+                int.Parse(versionMatch.Groups["minor"].Value, CultureInfo.InvariantCulture),
+                int.Parse(versionMatch.Groups["patch"].Value, CultureInfo.InvariantCulture),
+                versionMatch.Groups["pre"].Value, 
+                versionMatch.Groups["build"].Value);
             return true;
         }
 
