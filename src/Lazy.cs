@@ -199,6 +199,10 @@ namespace Lenoard.Core
         /// </summary>
         public void Reset()
         {
+            if (_lazy != null && _lazy.IsValueCreated && _lazy.Value is IDisposable)
+            {
+                ((IDisposable)_lazy.Value).Dispose();
+            }
             _lazy = CreateLazy();
             _isValueFaulted = false;
         }
