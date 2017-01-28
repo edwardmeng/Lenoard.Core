@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Linq.Expressions;
 using System.Reflection;
-using System.Linq;
 
 namespace Lenoard.Core
 {
@@ -126,20 +125,102 @@ namespace Lenoard.Core
         /// <returns>The Range intersection</returns>
         public Range<T> Intersect(Range<T> other)
         {
-            if (!ReferenceEquals(LowerBound,null)&&!ReferenceEquals(other.UpperBound,null) && LowerBound.CompareTo(other.UpperBound)>0)
+            if (_isEmpty || other._isEmpty)
             {
                 return Empty;
             }
-            return Empty;
-            //var allIntersections = _comparatorSets.SelectMany(
-            //    thisCs => other._comparatorSets.Select(thisCs.Intersect))
-            //    .Where(cs => cs != null).ToList();
-
-            //if (allIntersections.Count == 0)
-            //{
-            //    return new Range("<0.0.0");
-            //}
-            //return new Range(allIntersections);
+            if (!ReferenceEquals(LowerBound, null) &&
+                !ReferenceEquals(other.UpperBound, null))
+            {
+                var compare = LowerBound.CompareTo(other.UpperBound);
+                if (!IncludeLowerBound || !other.IncludeUpperBound)
+                {
+                    if (compare >= 0)
+                    {
+                        return Empty;
+                    }
+                }
+                else if (compare > 0)
+                {
+                    return Empty;
+                }
+            }
+            if (!ReferenceEquals(UpperBound, null) && !ReferenceEquals(other.LowerBound, null))
+            {
+                var compare = other.LowerBound.CompareTo(UpperBound);
+                if (!other.IncludeLowerBound || !IncludeUpperBound)
+                {
+                    if (compare >= 0)
+                    {
+                        return Empty;
+                    }
+                }
+                else if (compare > 0)
+                {
+                    return Empty;
+                }
+            }
+            T lowerBound, upperBound;
+            bool includeLowerBound, includeUpperBound;
+            if (ReferenceEquals(LowerBound, null))
+            {
+                lowerBound = other.LowerBound;
+                includeLowerBound = other.IncludeLowerBound;
+            }
+            else if (ReferenceEquals(other.LowerBound, null))
+            {
+                lowerBound = LowerBound;
+                includeLowerBound = IncludeLowerBound;
+            }
+            else
+            {
+                var compare = LowerBound.CompareTo(other.LowerBound);
+                if (compare > 0)
+                {
+                    lowerBound = LowerBound;
+                    includeLowerBound = IncludeLowerBound;
+                }
+                else if (compare < 0)
+                {
+                    lowerBound = other.LowerBound;
+                    includeLowerBound = other.IncludeLowerBound;
+                }
+                else
+                {
+                    lowerBound = LowerBound;
+                    includeLowerBound = IncludeLowerBound == other.IncludeLowerBound && IncludeLowerBound;
+                }
+            }
+            if (ReferenceEquals(UpperBound, null))
+            {
+                upperBound = other.UpperBound;
+                includeUpperBound = other.IncludeUpperBound;
+            }
+            else if (ReferenceEquals(other.UpperBound, null))
+            {
+                upperBound = UpperBound;
+                includeUpperBound = IncludeUpperBound;
+            }
+            else
+            {
+                var compare = UpperBound.CompareTo(other.UpperBound);
+                if (compare > 0)
+                {
+                    upperBound = other.UpperBound;
+                    includeUpperBound = other.IncludeUpperBound;
+                }
+                else if (compare < 0)
+                {
+                    upperBound = UpperBound;
+                    includeUpperBound = IncludeUpperBound;
+                }
+                else
+                {
+                    upperBound = UpperBound;
+                    includeUpperBound = IncludeUpperBound == other.IncludeUpperBound && IncludeUpperBound;
+                }
+            }
+            return new Range<T>(lowerBound, upperBound, includeLowerBound, includeUpperBound);
         }
 
         #region Parse
