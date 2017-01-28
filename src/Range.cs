@@ -22,7 +22,6 @@ namespace Lenoard.Core
     [Serializable]
 #endif
     public class Range<T> : IEquatable<Range<T>>
-        where T : IComparable<T>
     {
         private static readonly Func<string, T> _parser;
         private static readonly BoundaryParser<T> _tryParser;
@@ -132,7 +131,7 @@ namespace Lenoard.Core
             if (!ReferenceEquals(LowerBound, null) &&
                 !ReferenceEquals(other.UpperBound, null))
             {
-                var compare = LowerBound.CompareTo(other.UpperBound);
+                var compare = Comparer.Compare(LowerBound, other.UpperBound);
                 if (!IncludeLowerBound || !other.IncludeUpperBound)
                 {
                     if (compare >= 0)
@@ -147,7 +146,7 @@ namespace Lenoard.Core
             }
             if (!ReferenceEquals(UpperBound, null) && !ReferenceEquals(other.LowerBound, null))
             {
-                var compare = other.LowerBound.CompareTo(UpperBound);
+                var compare = Comparer.Compare(other.LowerBound, UpperBound);
                 if (!other.IncludeLowerBound || !IncludeUpperBound)
                 {
                     if (compare >= 0)
@@ -174,7 +173,7 @@ namespace Lenoard.Core
             }
             else
             {
-                var compare = LowerBound.CompareTo(other.LowerBound);
+                var compare = Comparer.Compare(LowerBound, other.LowerBound);
                 if (compare > 0)
                 {
                     lowerBound = LowerBound;
@@ -203,7 +202,7 @@ namespace Lenoard.Core
             }
             else
             {
-                var compare = UpperBound.CompareTo(other.UpperBound);
+                var compare = Comparer.Compare(UpperBound, other.UpperBound);
                 if (compare > 0)
                 {
                     upperBound = other.UpperBound;

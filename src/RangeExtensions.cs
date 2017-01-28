@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
-using System.Reflection;
 
 namespace Lenoard.Core
 {
@@ -143,7 +142,7 @@ namespace Lenoard.Core
         /// <param name="range">The <see cref="T:Range{T}"/> used to filter the sequence.</param>
         /// <returns>An <see cref="IQueryable{T}"/> that contains elements from the input sequence that element members satisfy the range limitation.</returns>
         public static IQueryable<TSource> Range<TSource, TMember>(this IQueryable<TSource> source, Expression<Func<TSource, TMember>> member, Range<TMember?> range)
-            where TMember : struct
+             where TMember : struct
         {
             if (source == null)
             {
