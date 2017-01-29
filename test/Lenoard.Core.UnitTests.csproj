@@ -57,6 +57,7 @@
     <Compile Include="DataUriTest.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="RangeTest.cs" />
+    <Compile Include="SemanticVersionTest.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="..\Lenoard.snk">

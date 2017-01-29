@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
+using System.Reflection;
 
 namespace Lenoard.Core
 {
@@ -10,6 +11,7 @@ namespace Lenoard.Core
     /// </summary>
     public static class RangeExtensions
     {
+        private static readonly Expression EmptyPredicate = Expression.Equal(Expression.Constant(1), Expression.Constant(0));
         /// <summary>
         /// Filters a sequence of values based on a <see cref="T:Range{T}"/>.
         /// </summary>
@@ -33,6 +35,10 @@ namespace Lenoard.Core
             if (memberExpr == null)
             {
                 throw new ArgumentException();
+            }
+            if (range == Core.Range<TMember>.Empty)
+            {
+                return source.Where(Expression.Lambda<Func<TSource, bool>>(EmptyPredicate, member.Parameters));
             }
 #if NetCore
             bool isNullable = Nullable.GetUnderlyingType(typeof(TMember)) != null || !typeof(TMember).GetTypeInfo().IsValueType;
@@ -91,12 +97,16 @@ namespace Lenoard.Core
             {
                 return source;
             }
+            var parameter = Expression.Parameter(typeof(TSource));
+            if (range == Core.Range<TSource>.Empty)
+            {
+                return source.Where(Expression.Lambda<Func<TSource, bool>>(EmptyPredicate, parameter));
+            }
 #if NetCore
             bool isNullable = Nullable.GetUnderlyingType(typeof(TSource)) != null || !typeof(TSource).GetTypeInfo().IsValueType;
 #else
             bool isNullable = Nullable.GetUnderlyingType(typeof(TSource)) != null || !typeof(TSource).IsValueType;
 #endif
-            var parameter = Expression.Parameter(typeof(TSource));
             Expression lowerExpr = null, upperExpr = null;
             if (!isNullable || !Equals(range.LowerBound, default(TSource)))
             {
@@ -156,6 +166,10 @@ namespace Lenoard.Core
             if (memberExpr == null)
             {
                 throw new ArgumentException();
+            }
+            if (range == Core.Range<TMember?>.Empty)
+            {
+                return source.Where(Expression.Lambda<Func<TSource, bool>>(EmptyPredicate, member.Parameters));
             }
             Expression lowerExpr = null, upperExpr = null;
             if (range.LowerBound.HasValue)
@@ -217,6 +231,10 @@ namespace Lenoard.Core
             {
                 throw new ArgumentException();
             }
+            if (range == Core.Range<TMember>.Empty)
+            {
+                return source.Where(Expression.Lambda<Func<TSource, bool>>(EmptyPredicate, member.Parameters));
+            }
             var lowerBoundExpr = Expression.Constant(range.LowerBound, typeof(TMember));
             var upperBoundExpr = Expression.Constant(range.UpperBound, typeof(TMember));
             Expression lowerExpr = range.IncludeLowerBound ?
@@ -239,6 +257,10 @@ namespace Lenoard.Core
         /// <returns>An <see cref="IEnumerable{T}"/> that contains elements from the input sequence that element members satisfy the range limitation.</returns>
         public static IEnumerable<TSource> Range<TSource, TMember>(this IEnumerable<TSource> source, Func<TSource, TMember> member, Range<TMember> range)
         {
+            if (range == Core.Range<TMember>.Empty)
+            {
+                return source.Where(x => 1 == 0);
+            }
 #if NetCore
             bool isNullable = Nullable.GetUnderlyingType(typeof(TMember)) != null || !typeof(TMember).GetTypeInfo().IsValueType;
 #else
@@ -286,6 +308,10 @@ namespace Lenoard.Core
         /// <returns>An <see cref="IEnumerable{T}"/> that contains elements from the input sequence that element members satisfy the range limitation.</returns>
         public static IEnumerable<TSource> Range<TSource>(this IEnumerable<TSource> source, Range<TSource> range)
         {
+            if (range == Core.Range<TSource>.Empty)
+            {
+                return source.Where(x => 1 == 0);
+            }
 #if NetCore
             bool isNullable = Nullable.GetUnderlyingType(typeof(TSource)) != null || !typeof(TSource).GetTypeInfo().IsValueType;
 #else
@@ -336,6 +362,10 @@ namespace Lenoard.Core
         public static IEnumerable<TSource> Range<TSource, TMember>(this IEnumerable<TSource> source, Func<TSource, TMember> member, Range<TMember?> range)
             where TMember : struct
         {
+            if (range == Core.Range<TMember?>.Empty)
+            {
+                return source.Where(x => 1 == 0);
+            }
             Func<TMember, bool> lowerExpr = null, upperExpr = null;
             if (range.LowerBound.HasValue)
             {
@@ -381,6 +411,10 @@ namespace Lenoard.Core
         public static IEnumerable<TSource> Range<TSource, TMember>(this IEnumerable<TSource> source, Func<TSource, TMember?> member, Range<TMember> range)
             where TMember : struct
         {
+            if (range == Core.Range<TMember>.Empty)
+            {
+                return source.Where(x => 1 == 0);
+            }
             var lowerExpr = range.IncludeLowerBound
                 ? new Func<TMember?, bool>(value => value.HasValue && Comparer<TMember>.Default.Compare(value.Value, range.LowerBound) >= 0)
                 : (value => value.HasValue && Comparer<TMember>.Default.Compare(value.Value, range.LowerBound) > 0);

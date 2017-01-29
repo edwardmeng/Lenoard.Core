@@ -133,7 +133,29 @@ namespace Lenoard.Core.UnitTests
                 new Version("0.8.5"),
             };
             var filteredArray = array.AsQueryable().Range(x => x.Minor, new Range<int?>(5, null)).ToArray();
-            Assert.Equal(2,filteredArray.Length);
+            Assert.Equal(2, filteredArray.Length);
+            filteredArray = array.AsQueryable().Range(x => x.Minor, Range<int?>.Empty).ToArray();
+            Assert.Equal(0, filteredArray.Length);
+        }
+
+#if NetCore
+        [Xunit.Fact]
+#else
+        [NUnit.Framework.Test]
+#endif
+        public void EnumerableFilter()
+        {
+            var array = new[]
+            {
+                new Version("1.2.0"),
+                new Version("2.5.0"),
+                new Version("0.4.0"),
+                new Version("0.8.5"),
+            };
+            var filteredArray = array.Range(x => x.Minor, new Range<int?>(5, null)).ToArray();
+            Assert.Equal(2, filteredArray.Length);
+            filteredArray = array.Range(x => x.Minor, Range<int?>.Empty).ToArray();
+            Assert.Equal(0, filteredArray.Length);
         }
 
         private static bool TryParseNullable(string text, out int? value)
@@ -163,6 +185,147 @@ namespace Lenoard.Core.UnitTests
                 return null;
             }
             return int.Parse(text);
+        }
+
+#if NetCore
+        [Xunit.Fact]
+#else
+        [NUnit.Framework.Test]
+#endif
+        public void IntersectRange1()
+        {
+            var range1 = new Range<int>(1, 2);
+            var range2 = new Range<int>(2, 3);
+
+            Assert.Equal(new Range<int>(2, 2), range1.Intersect(range2));
+            Assert.Equal(new Range<int>(2, 2), range2.Intersect(range1));
+        }
+
+#if NetCore
+        [Xunit.Fact]
+#else
+        [NUnit.Framework.Test]
+#endif
+        public void IntersectRange2()
+        {
+            var range1 = new Range<int>(1, 2);
+            var range2 = new Range<int>(2, 3, false, false);
+
+            Assert.Equal(Range<int>.Empty, range1.Intersect(range2));
+            Assert.Equal(Range<int>.Empty, range2.Intersect(range1));
+        }
+
+
+#if NetCore
+        [Xunit.Fact]
+#else
+        [NUnit.Framework.Test]
+#endif
+        public void IntersectRange3()
+        {
+            var range1 = new Range<int>(1, 4);
+            var range2 = new Range<int>(2, 6);
+
+            Assert.Equal(new Range<int>(2, 4), range1.Intersect(range2));
+            Assert.Equal(new Range<int>(2, 4), range2.Intersect(range1));
+        }
+
+#if NetCore
+        [Xunit.Fact]
+#else
+        [NUnit.Framework.Test]
+#endif
+        public void IntersectRange4()
+        {
+            var range1 = new Range<int>(1, 4);
+            var range2 = new Range<int>(5, 6);
+
+            Assert.Equal(Range<int>.Empty, range1.Intersect(range2));
+            Assert.Equal(Range<int>.Empty, range2.Intersect(range1));
+        }
+
+#if NetCore
+        [Xunit.Fact]
+#else
+        [NUnit.Framework.Test]
+#endif
+        public void IntersectRange5()
+        {
+            var range1 = new Range<int>(1, 6);
+            var range2 = new Range<int>(2, 4);
+
+            Assert.Equal(new Range<int>(2, 4), range1.Intersect(range2));
+            Assert.Equal(new Range<int>(2, 4), range2.Intersect(range1));
+        }
+
+#if NetCore
+        [Xunit.Fact]
+#else
+        [NUnit.Framework.Test]
+#endif
+        public void IntersectRange6()
+        {
+            var range1 = new Range<int?>(null, 2);
+            var range2 = new Range<int?>(2, null);
+
+            Assert.Equal(new Range<int?>(2, 2), range1.Intersect(range2));
+            Assert.Equal(new Range<int?>(2, 2), range2.Intersect(range1));
+        }
+
+#if NetCore
+        [Xunit.Fact]
+#else
+        [NUnit.Framework.Test]
+#endif
+        public void IntersectRange7()
+        {
+            var range1 = new Range<int?>(null, 2);
+            var range2 = new Range<int?>(2, null, false, false);
+
+            Assert.Equal(Range<int?>.Empty, range1.Intersect(range2));
+            Assert.Equal(Range<int?>.Empty, range2.Intersect(range1));
+        }
+
+#if NetCore
+        [Xunit.Fact]
+#else
+        [NUnit.Framework.Test]
+#endif
+        public void IntersectRange8()
+        {
+            var range1 = new Range<int?>(null, 4);
+            var range2 = new Range<int?>(2, null);
+
+            Assert.Equal(new Range<int?>(2, 4), range1.Intersect(range2));
+            Assert.Equal(new Range<int?>(2, 4), range2.Intersect(range1));
+        }
+
+#if NetCore
+        [Xunit.Fact]
+#else
+        [NUnit.Framework.Test]
+#endif
+        public void IntersectRange9()
+        {
+            var range1 = new Range<int?>(null, 4);
+            var range2 = new Range<int?>(5, null);
+
+            Assert.Equal(Range<int?>.Empty, range1.Intersect(range2));
+            Assert.Equal(Range<int?>.Empty, range2.Intersect(range1));
+        }
+
+#if NetCore
+        [Xunit.Fact]
+#else
+        [NUnit.Framework.Test]
+#endif
+        public void IntersectRange10()
+        {
+            var range1 = new Range<int?>(null, 6);
+            var range2 = new Range<int?>(2, 4);
+
+            Assert.Equal(new Range<int?>(2, 4), range1.Intersect(range2));
+            Assert.Equal(new Range<int?>(2, 4), range2.Intersect(range1));
         }
     }
 }

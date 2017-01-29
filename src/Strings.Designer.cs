@@ -10,8 +10,9 @@
 
 namespace Lenoard.Core {
     using System;
-    
-    
+    using System.Reflection;
+
+
     /// <summary>
     ///   A strongly-typed resource class, for looking up localized strings, etc.
     /// </summary>
@@ -39,7 +40,12 @@ namespace Lenoard.Core {
         internal static global::System.Resources.ResourceManager ResourceManager {
             get {
                 if (object.ReferenceEquals(resourceMan, null)) {
-                    global::System.Resources.ResourceManager temp = new global::System.Resources.ResourceManager("Lenoard.Core.Strings", typeof(Strings).Assembly);
+#if NetCore
+                    var assembly = typeof(Strings).GetTypeInfo().Assembly;
+#else
+                    var assembly = typeof(Strings).Assembly;
+#endif
+                    global::System.Resources.ResourceManager temp = new global::System.Resources.ResourceManager("Lenoard.Core.Strings", assembly);
                     resourceMan = temp;
                 }
                 return resourceMan;

@@ -7,8 +7,8 @@ using System.Text.RegularExpressions;
 namespace Lenoard.Core
 {
     /// <summary>Reprensents a version object, compliant with the Semantic Version standard 2.0 (http://semver.org)</summary>
-#if NETSTANDARD
-    public sealed class SemanticVersion : IEquatable<SemanticVersion>, IComparable<SemVersion>, IComparable
+#if NetCore
+    public sealed class SemanticVersion : IEquatable<SemanticVersion>, IComparable<SemanticVersion>, IComparable
 #else
     [Serializable]
     public sealed class SemanticVersion : IEquatable<SemanticVersion>, IComparable<SemanticVersion>, IComparable, System.Runtime.Serialization.ISerializable
@@ -176,8 +176,23 @@ namespace Lenoard.Core
         /// </summary>
         /// <param name="version">Version string</param>
         public SemanticVersion(string version)
-            : this(Parse(version))
         {
+            if (string.IsNullOrEmpty(version))
+                throw new ArgumentNullException(nameof(version), Strings.CannotNullOrEmpty);
+            int major, minor, patch;
+            string pre, build;
+            if (TryParse(version, out major, out minor, out patch, out pre, out build))
+            {
+                Major = major;
+                Minor = minor;
+                Patch = patch;
+                Prerelease = pre ?? string.Empty;
+                Build = build ?? string.Empty;
+            }
+            else
+            {
+                throw new ArgumentException(Strings.InvalidVersion, nameof(version));
+            }
         }
 
         /// <summary>
@@ -185,6 +200,38 @@ namespace Lenoard.Core
         /// </summary>
         public SemanticVersion(SemanticVersion version)
             : this(version.Major, version.Minor, version.Patch, version.Prerelease, version.Build)
+        {
+        }
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="SemanticVersion"/> class.
+        /// </summary>
+        /// <param name="version">The <see cref="System.Version"/> that is used to initialize 
+        /// the Major, Minor, Patch and Build properties.</param>
+        public SemanticVersion(Version version)
+        {
+            if (version == null)
+                throw new ArgumentNullException(nameof(version));
+
+            Major = version.Major;
+            Minor = version.Minor;
+            Patch = version.Build >= 0 ? version.Build : 0;
+            Prerelease = string.Empty;
+            Build = version.Revision >= 0 ? version.Revision.ToString() : string.Empty;
+        }
+
+        /// <summary>Initializese a new instance of the <see cref="SemanticVersion" /> class.</summary>
+        /// <param name="major">The major version component.</param>
+        public SemanticVersion(int major)
+            : this(major, 0)
+        {
+        }
+
+        /// <summary>Initializese a new instance of the <see cref="SemanticVersion" /> class.</summary>
+        /// <param name="major">The major version component.</param>
+        /// <param name="minor">The minor version component.</param>
+        public SemanticVersion(int major, int minor)
+            : this(major, minor, 0)
         {
         }
 
@@ -245,19 +292,22 @@ namespace Lenoard.Core
         private SemanticVersion(System.Runtime.Serialization.SerializationInfo info, System.Runtime.Serialization.StreamingContext context)
         {
             if (info == null) throw new ArgumentNullException(nameof(info));
-            var semVersion = Parse(info.GetString("SemanticVersion"));
-            Major = semVersion.Major;
-            Minor = semVersion.Minor;
-            Patch = semVersion.Patch;
-            Prerelease = semVersion.Prerelease;
-            Build = semVersion.Build;
+            Major = info.GetInt32("Major");
+            Minor = info.GetInt32("Minor");
+            Patch = info.GetInt32("Patch");
+            Prerelease = info.GetString("Prerelease");
+            Build = info.GetString("Build");
         }
 
         [System.Security.Permissions.SecurityPermission(System.Security.Permissions.SecurityAction.Demand, SerializationFormatter = true)]
         public void GetObjectData(System.Runtime.Serialization.SerializationInfo info, System.Runtime.Serialization.StreamingContext context)
         {
             if (info == null) throw new ArgumentNullException(nameof(info));
-            info.AddValue("SemanticVersion", ToString());
+            info.AddValue("Major", Major);
+            info.AddValue("Minor", Minor);
+            info.AddValue("Patch", Patch);
+            info.AddValue("Prerelease", Prerelease);
+            info.AddValue("Build", Build);
         }
 #endif
 
@@ -266,8 +316,11 @@ namespace Lenoard.Core
         #region Format
 
         /// <summary>
-        /// Gives a normalized representation of the version.
+        /// Gives a normalized representation of the semantic version.
         /// </summary>
+        /// <returns>
+        /// A <see cref="string" /> that represents this semantic version.
+        /// </returns>
         public override string ToString()
         {
             return ToString("N");
@@ -330,14 +383,43 @@ namespace Lenoard.Core
 
         #region Compare
 
+        /// <inheritdoc />
         public int CompareTo(object obj)
         {
             return CompareTo(obj as SemanticVersion);
         }
 
+        /// <inheritdoc />
         public int CompareTo(SemanticVersion other)
         {
             return Compare(this, other);
+        }
+
+        /// <summary>
+        /// Compares the specified versions.
+        /// </summary>
+        /// <param name="version1">The version to compare to.</param>
+        /// <param name="version2">The version to compare against.</param>
+        /// <returns>If versionA &lt; versionB <c>&lt; 0</c>, if versionA &gt; versionB <c>&gt; 0</c>,
+        /// if versionA is equal to versionB <c>0</c>.</returns>
+        public static int Compare(SemanticVersion version1, SemanticVersion version2)
+        {
+            if (ReferenceEquals(version1, null))
+                return ReferenceEquals(version2, null) ? 0 : -1;
+            return ((IComparer<SemanticVersion>)VersionComparer).Compare(version1, version2);
+        }
+
+        /// <summary>
+        /// Tests the specified versions for equality.
+        /// </summary>
+        /// <param name="versionA">The first version.</param>
+        /// <param name="versionB">The second version.</param>
+        /// <returns>If versionA is equal to versionB <c>true</c>, else <c>false</c>.</returns>
+        public static bool Equals(SemanticVersion versionA, SemanticVersion versionB)
+        {
+            if (ReferenceEquals(versionA, null))
+                return ReferenceEquals(versionB, null);
+            return versionA.Equals(versionB);
         }
 
         /// <inheritdoc />
@@ -349,48 +431,80 @@ namespace Lenoard.Core
         /// <inheritdoc />
         public bool Equals(SemanticVersion other)
         {
-            return CompareTo(other) == 0;
+            return CompareTo(other) == 0 && Equals(Build, other?.Build);
         }
 
+        /// <inheritdoc />
         public override int GetHashCode()
         {
             return ((IEqualityComparer<SemanticVersion>)VersionComparer).GetHashCode(this);
-        }
-
-        private static int Compare(SemanticVersion version1, SemanticVersion version2)
-        {
-            return ((IComparer<SemanticVersion>)VersionComparer).Compare(version1, version2);
         }
 
         #endregion
 
         #region Operators
 
+        /// <summary>
+        /// The override of the equals operator. 
+        /// </summary>
+        /// <param name="left">The left value.</param>
+        /// <param name="right">The right value.</param>
+        /// <returns>If left is equal to right <c>true</c>, else <c>false</c>.</returns>
         public static bool operator ==(SemanticVersion left, SemanticVersion right)
         {
             return Compare(left, right) == 0;
         }
 
+        /// <summary>
+        /// The override of the un-equal operator. 
+        /// </summary>
+        /// <param name="left">The left value.</param>
+        /// <param name="right">The right value.</param>
+        /// <returns>If left is not equal to right <c>true</c>, else <c>false</c>.</returns>
         public static bool operator !=(SemanticVersion left, SemanticVersion right)
         {
             return Compare(left, right) != 0;
         }
 
+        /// <summary>
+        /// The override of the less operator. 
+        /// </summary>
+        /// <param name="left">The left value.</param>
+        /// <param name="right">The right value.</param>
+        /// <returns>If left is less than right <c>true</c>, else <c>false</c>.</returns>
         public static bool operator <(SemanticVersion left, SemanticVersion right)
         {
             return Compare(left, right) < 0;
         }
 
+        /// <summary>
+        /// The override of the greater operator. 
+        /// </summary>
+        /// <param name="left">The left value.</param>
+        /// <param name="right">The right value.</param>
+        /// <returns>If left is greater than right <c>true</c>, else <c>false</c>.</returns>
         public static bool operator >(SemanticVersion left, SemanticVersion right)
         {
             return Compare(left, right) > 0;
         }
 
+        /// <summary>
+        /// The override of the less than or equal operator. 
+        /// </summary>
+        /// <param name="left">The left value.</param>
+        /// <param name="right">The right value.</param>
+        /// <returns>If left is less than or equal to right <c>true</c>, else <c>false</c>.</returns>
         public static bool operator <=(SemanticVersion left, SemanticVersion right)
         {
             return left == right || left < right;
         }
 
+        /// <summary>
+        /// The override of the greater than or equal operator. 
+        /// </summary>
+        /// <param name="left">The left value.</param>
+        /// <param name="right">The right value.</param>
+        /// <returns>If left is greater than or equal to right <c>true</c>, else <c>false</c>.</returns>
         public static bool operator >=(SemanticVersion left, SemanticVersion right)
         {
             return left == right || left > right;
@@ -431,12 +545,7 @@ namespace Lenoard.Core
         /// </remarks>
         public static explicit operator SemanticVersion(Version version)
         {
-            if (version == null)
-                throw new ArgumentNullException(nameof(version));
-
-            return new SemanticVersion(version.Major, version.Minor,
-                version.Build >= 0 ? version.Build : 0, string.Empty,
-                version.Revision >= 0 ? version.Revision.ToString() : string.Empty);
+            return new SemanticVersion(version);
         }
 
         /// <summary>Explicitly converts a <see cref="SemanticVersion" /> onject into a <see cref="System.Version" />.</summary>
@@ -494,21 +603,48 @@ namespace Lenoard.Core
         /// <returns><c>False</c> when a invalid version string is passed, otherwise <c>true</c>.</returns>
         public static bool TryParse(string versionString, out SemanticVersion version)
         {
+            int major, minor, patch;
+            string pre, build;
+            if (TryParse(versionString, out major, out minor, out patch, out pre, out build))
+            {
+                version = new SemanticVersion(major, minor, patch, pre, build);
+                return true;
+            }
             version = null;
+            return false;
+        }
 
-            if (versionString == null)
-                return false;
+        private static bool TryParse(string versionString, out int major, out int minor, out int patch, out string pre, out string build)
+        {
+            major = minor = patch = 0;
+            pre = build = null;
 
+            if (versionString == null) return false;
+            versionString = versionString.Trim();
+            if (versionString.Length == 0) return false;
+            if (versionString[0] == 'v' || versionString[0] == 'V') versionString = versionString.Substring(1);
+            if (versionString.Length == 0) return false;
             var versionMatch = VersionExpression.Match(versionString);
 
             if (!versionMatch.Success)
                 return false;
-            version = new SemanticVersion(
-                int.Parse(versionMatch.Groups["major"].Value, CultureInfo.InvariantCulture),
-                int.Parse(versionMatch.Groups["minor"].Value, CultureInfo.InvariantCulture),
-                int.Parse(versionMatch.Groups["patch"].Value, CultureInfo.InvariantCulture),
-                versionMatch.Groups["pre"].Value, 
-                versionMatch.Groups["build"].Value);
+            var majorMatch = versionMatch.Groups["major"].Value;
+            var minorMatch = versionMatch.Groups["minor"].Value;
+            var patchMatch = versionMatch.Groups["patch"].Value;
+            if (!int.TryParse(majorMatch, NumberStyles.Integer, CultureInfo.InvariantCulture, out major))
+            {
+                major = 0;
+            }
+            if (string.IsNullOrEmpty(minorMatch) || !int.TryParse(minorMatch, NumberStyles.Integer, CultureInfo.InvariantCulture, out minor))
+            {
+                minor = 0;
+            }
+            if (string.IsNullOrEmpty(patchMatch) || !int.TryParse(patchMatch, NumberStyles.Integer, CultureInfo.InvariantCulture, out patch))
+            {
+                patch = 0;
+            }
+            pre = versionMatch.Groups["pre"].Value;
+            build = versionMatch.Groups["build"].Value;
             return true;
         }
 

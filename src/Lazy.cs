@@ -14,8 +14,7 @@ namespace Lenoard.Core
     [System.Security.Permissions.HostProtection(System.Security.Permissions.SecurityAction.LinkDemand, Synchronization = true, ExternalThreading = true)]
 #endif
     [ComVisible(false)]
-    [DebuggerDisplay("ThreadSafetyMode={Mode}, IsValueCreated={IsValueCreated}, IsValueFaulted={IsValueFaulted}, Value={ValueForDebugDisplay}")]
-    [DebuggerTypeProxy(typeof(LazyDebugView<>))]
+    [DebuggerDisplay("ThreadSafetyMode={" + nameof(Mode) + "}, IsValueCreated={" + nameof(IsValueCreated) + "}, IsValueFaulted={" + nameof(IsValueFaulted) + "}, Value={" + nameof(ValueForDebugDisplay) + "}")]
     public class Lazy<T>
     {
         #region Fields
@@ -225,26 +224,4 @@ namespace Lenoard.Core
 
         #endregion
     }
-
-    #region LazyDebugView
-
-    internal class LazyDebugView<T>
-    {
-        private readonly Lazy<T> _lazy;
-
-        public LazyDebugView(Lazy<T> lazy)
-        {
-            _lazy = lazy;
-        }
-
-        public bool IsValueCreated => _lazy.IsValueCreated;
-
-        public bool IsValueFaulted => _lazy.IsValueFaulted;
-
-        public LazyThreadSafetyMode Mode => _lazy.Mode;
-
-        public T Value => _lazy.ValueForDebugDisplay;
-    }
-
-    #endregion
 }

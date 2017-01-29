@@ -11,9 +11,12 @@ namespace Lenoard.Core
     /// <summary>
     /// The data URI scheme is a uniform resource identifier (URI) scheme that provides a way to include data in-line in web pages as if they were external resources.
     /// </summary>
-    /// <seealso cref="https://en.wikipedia.org/wiki/Data_URI_scheme"/>
-    /// <seealso cref="https://developer.mozilla.org/en-US/docs/Web/HTTP/data_URIs"/>
-    /// <seealso cref="http://tools.ietf.org/html/rfc2397"/>
+    /// <remarks>
+    /// For detail please refer to 
+    /// https://en.wikipedia.org/wiki/Data_URI_scheme
+    /// https://developer.mozilla.org/en-US/docs/Web/HTTP/data_URIs
+    /// http://tools.ietf.org/html/rfc2397
+    /// </remarks>
 #if !NetCore
     [Serializable]
 #endif

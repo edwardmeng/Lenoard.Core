@@ -14,6 +14,15 @@ namespace Lenoard.Core.UnitTests
 #endif
         }
 
+        public static void NotEqual(object expected, object actual)
+        {
+#if NetCore
+            Xunit.Assert.NotEqual(expected, actual);
+#else
+            NUnit.Framework.Assert.AreNotEqual(expected, actual);
+#endif
+        }
+
         public static void Equal<T>(IEnumerable<T> expected, IEnumerable<T> actual)
         {
 #if NetCore

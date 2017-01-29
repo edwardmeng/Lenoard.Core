@@ -1,7 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq.Expressions;
 using System.Reflection;
+using System.Linq;
+using System.Text;
 
 namespace Lenoard.Core
 {
@@ -21,10 +24,14 @@ namespace Lenoard.Core
 #if !NetCore
     [Serializable]
 #endif
+    [DebuggerDisplay("{" + nameof(TextForDebugDisplay) + "}")]
     public class Range<T> : IEquatable<Range<T>>
     {
         private static readonly Func<string, T> _parser;
         private static readonly BoundaryParser<T> _tryParser;
+        /// <summary>
+        /// A read-only instance of the <see cref="Range{T}"/> that represents the empty range.
+        /// </summary>
         public static readonly Range<T> Empty = new Range<T>(true);
         private readonly bool _isEmpty;
 
@@ -98,6 +105,38 @@ namespace Lenoard.Core
         /// If the upper bound is included in the range
         /// </summary>
         public bool IncludeUpperBound { get; }
+
+        internal string TextForDebugDisplay
+        {
+            get
+            {
+                if (_isEmpty)
+                {
+                    return "Empty";
+                }
+                var text = new StringBuilder();
+                if (ReferenceEquals(LowerBound, null))
+                {
+                    text.Append("(-∞");
+                }
+                else
+                {
+                    text.Append(IncludeLowerBound ? "[" : "(")
+                        .Append(LowerBound);
+                }
+                text.Append(", ");
+                if (ReferenceEquals(UpperBound, null))
+                {
+                    text.Append("∞)");
+                }
+                else
+                {
+                    text.Append(UpperBound);
+                    text.Append(IncludeUpperBound ? "]" : ")");
+                }
+                return text.ToString();
+            }
+        }
 
         #endregion
 
@@ -614,7 +653,15 @@ namespace Lenoard.Core
             if (ReferenceEquals(null, other)) return false;
             if (ReferenceEquals(this, other)) return true;
             if (_isEmpty && other._isEmpty) return true;
-            if (!_isEmpty || !other._isEmpty) return false;
+            if (_isEmpty || other._isEmpty) return false;
+            if (ReferenceEquals(LowerBound, null) && !ReferenceEquals(other.LowerBound, null))
+                return false;
+            if (ReferenceEquals(other.LowerBound, null) && !ReferenceEquals(LowerBound, null))
+                return false;
+            if (ReferenceEquals(UpperBound, null) && !ReferenceEquals(other.UpperBound, null))
+                return false;
+            if (ReferenceEquals(other.UpperBound, null) && !ReferenceEquals(UpperBound, null))
+                return false;
             return other.IncludeLowerBound.Equals(IncludeLowerBound) &&
                 other.IncludeUpperBound.Equals(IncludeUpperBound) &&
                 Equals(other.LowerBound, LowerBound) &&
@@ -642,14 +689,29 @@ namespace Lenoard.Core
         {
             unchecked
             {
+                var result = GetType().GetHashCode();
                 if (_isEmpty)
                 {
-                    return _isEmpty.GetHashCode();
+                    return (result * 397) ^ _isEmpty.GetHashCode();
                 }
-                var result = IncludeLowerBound.GetHashCode();
-                result = (result * 397) ^ IncludeUpperBound.GetHashCode();
-                result = (result * 397) ^ LowerBound.GetHashCode();
-                result = (result * 397) ^ UpperBound.GetHashCode();
+                if (!ReferenceEquals(LowerBound, null))
+                {
+                    result = (result * 397) ^ IncludeLowerBound.GetHashCode();
+                    result = (result * 397) ^ LowerBound.GetHashCode();
+                }
+                else
+                {
+                    result = (result * 397) ^ 0.GetHashCode();
+                }
+                if (!ReferenceEquals(UpperBound,null))
+                {
+                    result = (result * 397) ^ IncludeUpperBound.GetHashCode();
+                    result = (result * 397) ^ UpperBound.GetHashCode();
+                }
+                else
+                {
+                    result = (result * 397) ^ 0.GetHashCode();
+                }
                 return result;
             }
         }
