@@ -113,40 +113,7 @@ namespace Lenoard.Core
                 if (xIsPrerelease && !yIsPrerelease) return -1;
                 if (!xIsPrerelease && yIsPrerelease) return 1;
 
-                if (xIsPrerelease)
-                {
-                    string[] xReleaseParts = x.Prerelease.Split('.'), yReleaseParts = y.Prerelease.Split('.');
-                    for (int i = 0, length = Math.Max(xReleaseParts.Length, yReleaseParts.Length); i < length; i++)
-                    {
-                        if (i >= xReleaseParts.Length) return -1;
-                        if (i >= yReleaseParts.Length) return 1;
-                        result = ComparePreRelease(xReleaseParts[i], yReleaseParts[i]);
-                        if (result != 0) return result;
-                    }
-                }
-                return 0;
-            }
-
-            private int ComparePreRelease(string version1, string version2)
-            {
-                int version1Num, version2Num;
-
-                // check if the identifiers are numeric
-                var v1IsNumeric = int.TryParse(version1, out version1Num);
-                var v2IsNumeric = int.TryParse(version2, out version2Num);
-
-                // if both are numeric compare them as numbers
-                if (v1IsNumeric && v2IsNumeric)
-                {
-                    return version1Num.CompareTo(version2Num);
-                }
-                if (v1IsNumeric || v2IsNumeric)
-                {
-                    // numeric labels come before alpha labels
-                    return v1IsNumeric ? -1 : 1;
-                }
-                // Ignoring 2.0.0 case sensitive compare. Everything will be compared case insensitively as 2.0.1 specifies.
-                return StringComparer.OrdinalIgnoreCase.Compare(version1, version2);
+                return xIsPrerelease ? ComparePreRelease(x.Prerelease, y.Prerelease) : 0;
             }
         }
         #endregion
@@ -383,6 +350,41 @@ namespace Lenoard.Core
 
         #region Compare
 
+        internal static int ComparePreRelease(string version1, string version2)
+        {
+            string[] xReleaseParts = version1.Split('.'), yReleaseParts = version2.Split('.');
+            for (int i = 0, length = Math.Max(xReleaseParts.Length, yReleaseParts.Length); i < length; i++)
+            {
+                if (i >= xReleaseParts.Length) return -1;
+                if (i >= yReleaseParts.Length) return 1;
+                var result = ComparePreReleasePart(xReleaseParts[i], yReleaseParts[i]);
+                if (result != 0) return result;
+            }
+            return 0;
+        }
+
+        private static int ComparePreReleasePart(string version1, string version2)
+        {
+            int version1Num, version2Num;
+
+            // check if the identifiers are numeric
+            var v1IsNumeric = int.TryParse(version1, out version1Num);
+            var v2IsNumeric = int.TryParse(version2, out version2Num);
+
+            // if both are numeric compare them as numbers
+            if (v1IsNumeric && v2IsNumeric)
+            {
+                return version1Num.CompareTo(version2Num);
+            }
+            if (v1IsNumeric || v2IsNumeric)
+            {
+                // numeric labels come before alpha labels
+                return v1IsNumeric ? -1 : 1;
+            }
+            // Ignoring 2.0.0 case sensitive compare. Everything will be compared case insensitively as 2.0.1 specifies.
+            return StringComparer.OrdinalIgnoreCase.Compare(version1, version2);
+        }
+
         /// <inheritdoc />
         public int CompareTo(object obj)
         {
@@ -596,7 +598,7 @@ namespace Lenoard.Core
         /// <summary>Tries to parse the specified string into a semantic version.</summary>
         /// <param name="versionString">The version string.</param>
         /// <param name="version">
-        ///     When the method returns, contains a SemVersion instance equivalent
+        ///     When the method returns, contains a <see cref="SemanticVersion"/> instance equivalent
         ///     to the version string passed in, if the version string was valid, or <c>null</c> if the
         ///     version string was not valid.
         /// </param>
@@ -622,7 +624,7 @@ namespace Lenoard.Core
             if (versionString == null) return false;
             versionString = versionString.Trim();
             if (versionString.Length == 0) return false;
-            if (versionString[0] == 'v' || versionString[0] == 'V') versionString = versionString.Substring(1);
+            if (versionString[0] == 'v' || versionString[0] == 'V' || versionString[0] == '=') versionString = versionString.Substring(1);
             if (versionString.Length == 0) return false;
             var versionMatch = VersionExpression.Match(versionString);
 
@@ -633,15 +635,23 @@ namespace Lenoard.Core
             var patchMatch = versionMatch.Groups["patch"].Value;
             if (!int.TryParse(majorMatch, NumberStyles.Integer, CultureInfo.InvariantCulture, out major))
             {
-                major = 0;
+                return false;
             }
-            if (string.IsNullOrEmpty(minorMatch) || !int.TryParse(minorMatch, NumberStyles.Integer, CultureInfo.InvariantCulture, out minor))
+            if (string.IsNullOrEmpty(minorMatch))
             {
                 minor = 0;
             }
-            if (string.IsNullOrEmpty(patchMatch) || !int.TryParse(patchMatch, NumberStyles.Integer, CultureInfo.InvariantCulture, out patch))
+            else if (!int.TryParse(minorMatch, NumberStyles.Integer, CultureInfo.InvariantCulture, out minor))
+            {
+                return false;
+            }
+            if (string.IsNullOrEmpty(patchMatch))
             {
                 patch = 0;
+            }
+            else if (!int.TryParse(patchMatch, NumberStyles.Integer, CultureInfo.InvariantCulture, out patch))
+            {
+                return false;
             }
             pre = versionMatch.Groups["pre"].Value;
             build = versionMatch.Groups["build"].Value;

@@ -34,6 +34,15 @@
     <Compile Include="..\..\src\RangeExtensions.cs">
       <Link>RangeExtensions.cs</Link>
     </Compile>
+    <Compile Include="..\..\src\RangeExtensions.cs">
+      <Link>RangeExtensions.cs</Link>
+    </Compile>
+    <Compile Include="..\..\src\SemanticVersion.cs">
+      <Link>SemanticVersion.cs</Link>
+    </Compile>
+    <Compile Include="..\..\src\SemanticVersionComparator.cs">
+      <Link>SemanticVersionComparator.cs</Link>
+    </Compile>
     <Compile Include="..\..\src\Strings.Designer.cs">
       <AutoGen>True</AutoGen>
       <DesignTime>True</DesignTime>
