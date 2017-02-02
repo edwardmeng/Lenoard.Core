@@ -132,6 +132,9 @@
   <data name="InvalidVersion" xml:space="preserve">
     <value>The provided version string is invalid.</value>
   </data>
+  <data name="InvalidVersionComparator" xml:space="preserve">
+    <value>The provided version comparator string is invalid.</value>
+  </data>
   <data name="UncomparableType" xml:space="preserve">
     <value>Type "{0}" does not implement IComparable&lt;{0}&gt; or IComparable.</value>
   </data>

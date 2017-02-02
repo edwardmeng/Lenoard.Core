@@ -73,19 +73,19 @@ namespace Lenoard.Core
 
                 if (!versionMatch.Success)
                     return false;
-                int? major,patch, minor;
+                int? major, patch, minor;
                 if (!TryParseNumber(versionMatch.Groups["major"].Value, false, out major)) return false;
                 if (!TryParseNumber(versionMatch.Groups["minor"].Value, true, out minor)) return false;
                 if (!TryParseNumber(versionMatch.Groups["patch"].Value, true, out patch)) return false;
                 var pre = versionMatch.Groups["pre"].Value;
-                version = new ComparatorSemanticVersion(major??0, minor, patch, pre);
+                version = new ComparatorSemanticVersion(major ?? 0, minor, patch, pre);
                 return true;
             }
 
             private static bool TryParseNumber(string value, bool allowWildcast, out int? result)
             {
                 result = null;
-                if (string.IsNullOrEmpty(value)|| value != "x" && value != "X" && value != "*")
+                if (string.IsNullOrEmpty(value) || value == "x" || value == "X" || value == "*")
                 {
                     return allowWildcast;
                 }
@@ -109,10 +109,35 @@ namespace Lenoard.Core
             }
         }
 
+        #region Fields
+
         private readonly string _originalString;
         private readonly Func<SemanticVersion, bool> _calculator;
-
         private static readonly Func<SemanticVersion, bool> _anyCalculator = version => true;
+
+        private static readonly Regex IntersectSeparator =
+            new Regex(@"(\s*&&?\s*)|((?<![-,[(~^])\s+(?![-,\])]))",
+#if NetCore
+                RegexOptions.CultureInvariant | RegexOptions.ExplicitCapture);
+#else
+                RegexOptions.CultureInvariant | RegexOptions.Compiled | RegexOptions.ExplicitCapture);
+#endif
+
+        private static readonly Regex UnionSeparator = new Regex(@"\|\|?",
+#if NetCore
+                RegexOptions.CultureInvariant | RegexOptions.ExplicitCapture);
+#else
+                RegexOptions.CultureInvariant | RegexOptions.Compiled | RegexOptions.ExplicitCapture);
+#endif
+
+        private static readonly Regex HyphenSeparator = new Regex(@"\s+-\s+",
+#if NetCore
+                RegexOptions.CultureInvariant | RegexOptions.ExplicitCapture);
+#else
+                RegexOptions.CultureInvariant | RegexOptions.Compiled | RegexOptions.ExplicitCapture);
+#endif
+
+        #endregion
 
         private SemanticVersionComparator(string originalString, Func<SemanticVersion, bool> calculator)
         {
@@ -154,11 +179,9 @@ namespace Lenoard.Core
         /// <exception cref="ArgumentException">Raised when the the input string is in an invalid format.</exception>
         public static SemanticVersionComparator Parse(string value)
         {
-            if (string.IsNullOrEmpty(value))
-                throw new ArgumentNullException(nameof(value), Strings.CannotNullOrEmpty);
             SemanticVersionComparator comparator;
             if (!TryParse(value, out comparator))
-                throw new ArgumentException(Strings.InvalidVersion, nameof(value));
+                throw new ArgumentException(Strings.InvalidVersionComparator, nameof(value));
             return comparator;
         }
 
@@ -179,7 +202,7 @@ namespace Lenoard.Core
                 return true;
             }
             value = value.Trim();
-            if (value.Length == 0)
+            if (value.Length == 0 || value == "*")
             {
                 comparator = new SemanticVersionComparator(value, _anyCalculator);
                 return true;
@@ -200,7 +223,7 @@ namespace Lenoard.Core
             value = value.Trim();
             if (value.Length == 0) return false;
             var parts = new List<Func<SemanticVersion, bool>>();
-            foreach (var text in Regex.Split(value, @"\|\|?"))
+            foreach (var text in UnionSeparator.Split(value))
             {
                 Func<SemanticVersion, bool> comparator;
                 if (!ParseIntersectSet(text, out comparator))
@@ -220,7 +243,7 @@ namespace Lenoard.Core
             value = value.Trim();
             if (value.Length == 0) return false;
             var parts = new List<Func<SemanticVersion, bool>>();
-            foreach (var text in Regex.Split(value, @"(&&?)|\s+"))
+            foreach (var text in IntersectSeparator.Split(value))
             {
                 Func<SemanticVersion, bool> comparator;
                 if (!ParseRange(text, out comparator))
@@ -253,7 +276,7 @@ namespace Lenoard.Core
         private static bool ParseHyphenRange(string value, out Func<SemanticVersion, bool> expr)
         {
             expr = null;
-            var boundaries = Regex.Split(value, @"\s+-\s+");
+            var boundaries = HyphenSeparator.Split(value);
             if (boundaries.Length != 2)
             {
                 return false;
@@ -420,12 +443,13 @@ namespace Lenoard.Core
             }
             else if (value.StartsWith("!=") || value.StartsWith("<>"))
             {
-                comparatorCreator = comparator =>
+                Func<SemanticVersion, bool> equalToComparator;
+                if (ParseSimpleComparator(value.Substring(2), out equalToComparator))
                 {
-                    var compareVersion = comparator.ToLowerBound();
-                    return version => version != compareVersion;
-                };
-                compareLength = 2;
+                    expr = version => !equalToComparator(version);
+                    return true;
+                }
+                return false;
             }
             else if (value.StartsWith(">"))
             {
@@ -440,12 +464,7 @@ namespace Lenoard.Core
             }
             else if (value.StartsWith("="))
             {
-                comparatorCreator = comparator =>
-                {
-                    var compareVersion = comparator.ToLowerBound();
-                    return version => version == compareVersion;
-                };
-                compareLength = 1;
+                return ParseSimpleComparator(value.Substring(1), out expr);
             }
             else
             {
@@ -486,76 +505,48 @@ namespace Lenoard.Core
 
         private static Func<SemanticVersion, bool> CreateComparator(SemanticVersion lowerBound, SemanticVersion upperBound, bool includeLowerBound, bool includeUpperBound)
         {
-            Func<SemanticVersion, bool> lowerComparator, upperComparator;
-            if (lowerBound == null)
+            Func<SemanticVersion, bool> normalLowerBoundComparator = version =>
+                lowerBound == null || includeLowerBound ? version >= lowerBound : version > lowerBound;
+            Func<SemanticVersion, bool> normalUpperBoundComparator = version =>
+                upperBound == null || includeUpperBound ? version <= upperBound : version < upperBound;
+
+            if (VersionNumbersSame(lowerBound, upperBound))
             {
-                lowerComparator = version => true;
+                return version => normalLowerBoundComparator(version) && normalUpperBoundComparator(version);
             }
-            else if (!string.IsNullOrEmpty(lowerBound.Prerelease))
+            Func<SemanticVersion, bool> prereleaseLowerBoundComparator = version =>
             {
-                if (includeLowerBound)
+                if (lowerBound != null && !string.IsNullOrEmpty(lowerBound.Prerelease) && !string.IsNullOrEmpty(version.Prerelease) && VersionNumbersSame(version, lowerBound))
                 {
-                    lowerComparator = version => string.IsNullOrEmpty(version.Prerelease)
-                        ? version >= lowerBound
-                        : VersionNumbersSame(version, lowerBound) &&
-                          SemanticVersion.ComparePreRelease(version.Prerelease, lowerBound.Prerelease) >= 0;
+                    var compare = SemanticVersion.ComparePreRelease(version.Prerelease, lowerBound.Prerelease);
+                    return includeLowerBound ? compare >= 0 : compare > 0;
                 }
-                else
-                {
-                    lowerComparator = version => string.IsNullOrEmpty(version.Prerelease)
-                        ? version > lowerBound
-                        : VersionNumbersSame(version, lowerBound) &&
-                          SemanticVersion.ComparePreRelease(version.Prerelease, lowerBound.Prerelease) > 0;
-                }
-            }
-            else
+                return false;
+            };
+
+            Func<SemanticVersion, bool> prereleaseUpperBoundComparator = version =>
             {
-                if (includeLowerBound)
+                if (upperBound != null && !string.IsNullOrEmpty(upperBound.Prerelease) && !string.IsNullOrEmpty(version.Prerelease) && VersionNumbersSame(version, upperBound))
                 {
-                    lowerComparator = version => string.IsNullOrEmpty(version.Prerelease) && version >= lowerBound;
+                    var compare = SemanticVersion.ComparePreRelease(version.Prerelease, upperBound.Prerelease);
+                    return includeUpperBound ? compare <= 0 : compare < 0;
                 }
-                else
-                {
-                    lowerComparator = version => string.IsNullOrEmpty(version.Prerelease) && version > lowerBound;
-                }
-            }
-            if (upperBound == null)
-            {
-                upperComparator = version => true;
-            }
-            else if (!string.IsNullOrEmpty(upperBound.Prerelease))
-            {
-                if (includeUpperBound)
-                {
-                    upperComparator = version => string.IsNullOrEmpty(version.Prerelease)
-                        ? version <= upperBound
-                        : VersionNumbersSame(version, upperBound) &&
-                          SemanticVersion.ComparePreRelease(version.Prerelease, upperBound.Prerelease) <= 0;
-                }
-                else
-                {
-                    upperComparator = version => string.IsNullOrEmpty(version.Prerelease)
-                        ? version < upperBound
-                        : VersionNumbersSame(version, upperBound) &&
-                          SemanticVersion.ComparePreRelease(version.Prerelease, upperBound.Prerelease) > 0;
-                }
-            }
-            else
-            {
-                if (includeUpperBound)
-                {
-                    upperComparator = version => string.IsNullOrEmpty(version.Prerelease) && version <= upperBound;
-                }
-                else
-                {
-                    upperComparator = version => string.IsNullOrEmpty(version.Prerelease) && version < upperBound;
-                }
-            }
-            return version => lowerComparator(version) && upperComparator(version);
+                return false;
+            };
+
+            Func<SemanticVersion, bool> releasedLowerBoundComparator = version =>
+                lowerBound == null || string.IsNullOrEmpty(version.Prerelease) && normalLowerBoundComparator(version);
+            Func<SemanticVersion, bool> releasedUpperBoundComparator = version =>
+                upperBound == null || string.IsNullOrEmpty(version.Prerelease) && normalUpperBoundComparator(version);
+
+            return version => prereleaseLowerBoundComparator(version) || prereleaseUpperBoundComparator(version) ||
+                              releasedLowerBoundComparator(version) && releasedUpperBoundComparator(version);
         }
 
         private static bool VersionNumbersSame(SemanticVersion x, SemanticVersion y)
         {
+            if (ReferenceEquals(x, null) && ReferenceEquals(y, null)) return true;
+            if (ReferenceEquals(x, null) || ReferenceEquals(y, null)) return false;
             return x.Major == y.Major && x.Minor == y.Minor && x.Patch == y.Patch;
         }
     }

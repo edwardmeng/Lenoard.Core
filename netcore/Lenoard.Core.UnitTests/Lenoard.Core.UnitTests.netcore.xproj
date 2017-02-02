@@ -26,6 +26,12 @@
     <Compile Include="..\..\test\RangeTest.cs">
       <Link>RangeTest.cs</Link>
     </Compile>
+    <Compile Include="..\..\test\SemanticVersionComparatorTest.cs">
+      <Link>SemanticVersionComparatorTest.cs</Link>
+    </Compile>
+    <Compile Include="..\..\test\SemanticVersionTest.cs">
+      <Link>SemanticVersionTest.cs</Link>
+    </Compile>
     <Compile Include="..\..\test\Properties\AssemblyInfo.cs" >
       <Link>Properties\AssemblyInfo.cs</Link>
     </Compile>

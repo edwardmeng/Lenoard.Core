@@ -433,7 +433,7 @@ namespace Lenoard.Core
         /// <inheritdoc />
         public bool Equals(SemanticVersion other)
         {
-            return CompareTo(other) == 0 && Equals(Build, other?.Build);
+            return CompareTo(other) == 0 && string.Equals(Build, other?.Build, StringComparison.OrdinalIgnoreCase);
         }
 
         /// <inheritdoc />
