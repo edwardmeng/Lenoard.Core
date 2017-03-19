@@ -1,11 +1,12 @@
 ﻿using System;
 using System.IO;
-using System.Security.Permissions;
 
 namespace Lenoard.Core
 {
     public static class PathHelper
     {
+        private const string DataDirectory = "|datadirectory|";
+
         private static bool IsAbsolutePhysicalPath(string path)
         {
             return path != null && path.Length >= 3 && (path[1] == ':' && IsDirectorySeparatorChar(path[2]) || IsUncSharePath(path));
@@ -31,21 +32,21 @@ namespace Lenoard.Core
             return scheme == "http" || scheme == "https" || scheme == "ftp" || scheme == "file" || scheme == "news";
         }
 
+        private static bool IsAppRelativePath(string path)
+        {
+            if (string.IsNullOrEmpty(path) || path.Length < 2) return false;
+            return path[0] == '~' && IsDirectorySeparatorChar(path[1]);
+        }
+
         private static string GetDataDirectory()
         {
             string directory = AppDomain.CurrentDomain.GetData("DataDirectory") as string;
             if (string.IsNullOrEmpty(directory))
             {
                 directory = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "App_Data");
-                AppDomain.CurrentDomain.SetData("DataDirectory", directory, new FileIOPermission(FileIOPermissionAccess.PathDiscovery, directory));
+                AppDomain.CurrentDomain.SetData("DataDirectory", directory, new System.Security.Permissions.FileIOPermission(System.Security.Permissions.FileIOPermissionAccess.PathDiscovery, directory));
             }
             return directory;
-        }
-
-        private static bool IsAppRelativePath(string path)
-        {
-            if (string.IsNullOrEmpty(path) || path.Length < 2) return false;
-            return path[0] == '~' && IsDirectorySeparatorChar(path[1]);
         }
 
         private static bool TryReplaceSpecialFolder(ref string virtualPath)
@@ -60,9 +61,9 @@ namespace Lenoard.Core
                     return true;
                 }
             }
-            if (virtualPath.StartsWith("|DataDirectory|"))
+            if (virtualPath.StartsWith(DataDirectory, StringComparison.OrdinalIgnoreCase))
             {
-                virtualPath = Path.Combine(GetDataDirectory(), virtualPath.Substring(15));
+                virtualPath = Path.Combine(GetDataDirectory(), virtualPath.Substring(DataDirectory.Length));
                 return true;
             }
             return false;

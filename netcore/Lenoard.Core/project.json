@@ -13,7 +13,8 @@
         "imports": "dnxcore50",
         "buildOptions": {
             "compile": {
-                "include": [ "../../GlobalAssemblyInfo.cs", "../../src/**/*.cs" ]
+                "include": [ "../../GlobalAssemblyInfo.cs", "../../src/**/*.cs" ],
+                "exclude": ["../../src/PathHelper.cs"]
             },
             "embed": {
                 "include": [ "../../src/*.resx" ]
